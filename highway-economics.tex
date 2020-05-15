@@ -24,11 +24,11 @@
 
 \title{Economics of the CasperLabs Highway Protocol}
 
-\author[*]{Andreas Fackler}
-\author[*]{Alexander Limonov}
-\author[*]{Onur Solmaz}
+\author{Andreas Fackler}
+\author{Alexander Limonov}
+\author{Onur Solmaz}
 
-\affil[*]{CasperLabs}
+\affil{CasperLabs}
 
 \date{May 2020}
 
@@ -43,249 +43,17 @@
 \begin{document}
 
 \maketitle
+
+\begin{abstract}
+  The CasperLabs Highway protocol was previously introduced in \cite{kane2019casperlabs}. Here, we encapsulate its economic aspects. We introduce the incentive mechanisms that are designed to keep the network running in an optimal condition, such as seigniorage, transaction fee distribution and slashing. Concepts are introduced pragmatically, followed by the application of formal analysis. We also explore the viabilities of malicious and unwanted behaviors, such as cartel formation, censorship and freeloading.
+\end{abstract}
+
 \tableofcontents
 \pagebreak
 
-
-\begin{abstract}
-  The CasperLabs Highway protocol was previously introduced in \cite{kane2019casperlabs}. Here, we encapsulate the economic aspects of the CasperLabs Highway Protocol. We introduce the incentive mechanisms that are designed to keep the network running in an optimal condition, such as seigniorage, transaction fee distribution and slashing. Concepts are introduced pragmatically, followed by the application of formal analysis. We also explore the viabilities of malicious and unwanted behaviors, such as cartel formation, censorship and freeloading.
-\end{abstract}
-
-
 \section*{Introduction}
 
-\section{Seigniorage}
-
-
-In Highway, validators are rewarded for proposing and finalizing blocks. New tokens are minted at the end of each era through seigniorage, and distributed to validators according to their performance in that era. We do not have constant block rewards as in Proof of Work blockchains like Bitcoin and Ethereum---instead, block rewards are calculated retrospectively at the end of each era based on multiple factors, such as finality and participated weight. By \emph{weight}, we mean a validator's bonded stake used in consensus; by \emph{assigned weight}, we mean the total stake of validators that are scheduled to participate on a block; and by \emph{participated weight}, we mean the total stake of validators that actually end up participating, which requires sending messages to finalize a block before their respective rounds end.
-
-In general, we will be looking at two criteria to determine the validators' eligibility to receive rewards from a proposed block:
-
-\begin{itemize}
-\item
-  On-time finalization (OTF): Validators should finalize blocks on time, by sending required messages before their respective rounds end. We set OTF to require only a small but sufficient participating weight, for a simple reason: the probability of receiving a message on time decreases as the duration required for that approaches network propagation delay, so there is a trade-off between round lengths and assigned weight. We favor faster rounds over higher short-term safety guarantees, and argue that the latter can be achieved once the rounds end.
-\item Eventual finality (EF): Complementary to the lower safety guarantees of OTF, we want all validators voting for a block once a long enough time passes. This is possible, because validators that are not assigned to a block can still vote for it by participating on one of its descendants. The higher the weight voting for a block, the better.
-\end{itemize}
-
-We emulate the evolution of finality in Proof of Work blockchains by having validators to finalize a block with a relatively low but sufficiently high guarantee in the short run, and incentivizing them to provide the highest guarantee in the long run. This mirrors how a block becomes safer in Proof of Work as more blocks pile up on it.
-
-For a given block, fractions of the block reward is allocated for OTF and EF respectively. Eligibility for OTF rewards follows an all-or-nothing approach: it is burned if the block is not finalized on time. EF eligibility, on the other hand, is a sliding scale: the more weight votes on a block, the more of the allocated fraction is rewarded. This incentivizes validators to back a block with as much weight as possible in the long run.
-
-\subsection{Schedule}
-\label{schedule}
-
-Let $V$ be the set of validators, and be $\boldsymbol{w}:V\to \mathbb{R}_{\geq 0}$ a map assigning to each validator $v\in V$ their weight (and other conventions follow from the Highway paper).
-
-The schedule with which validators send messages are determined by the validators' rounds, which are in turn determined by their round exponents. A validator with the round exponent $n$ can and has to participate in rounds that repeat every $2^n$ ticks. When a validator wants to adjust its round exponent, they can announce a new value \emph{in any message}. But the new value comes into force \emph{once the round that they have made the announcement ends}. Eventually, the announcements yield a map $n_v: \mathbb{N}\to \mathbb{N}$ which maps each validator $v$ to the announced round exponents. Also, the above rule dictates that $n_v(i)=n_v(i-1)$ unless $i$ is a multiple of both $2^{n_v(i)}$ and $2^{n_v(i-1)}$. See \cite{kane2019casperlabs}, section \emph{Leaders and Ticks} for more details. The \emph{schedule} then refers to the set of all $n_v$ for each $v$.
-
-\subsection{Round}
-\label{round}
-
-We mean by \emph{round $i$ of validator $v$} a period that starts at tick $i$ in which $v$ has to participate. When we just mention \emph{round} $i$ without referring to a validator, we mean the collective rounds that start at $i$.
-
-Given a round $i$, the leader is scheduled to propose a block $\mathcal{L}(i)$ if the condition $i\mod 2^{n_{\mathcal{L}(i)}(i)}=0$ is satisfied. Otherwise, the round cannot take place.
-
-\begin{quote}
-Michael: \textgreater{} Otherwise, the round cannot take place Hmm, I am unsure about this. Obviously if the leader is not in the round then there will be no lambda message or lambda response, but I think there could still be omega messages and those might still be useful for propagating information around the network.
-\end{quote}
-
-Each validator is assessed according to their own round exponent. All assigned validators become eligible to receive rewards as long as the block gets finalized with messages that were sent within each validator's own round.
-
-We denote by $V_{i}=\{v\in V \mid i \mod 2^{n_v(i)} = 0\}$ the subset of validators that is scheduled to participate in round $i$:
-
-\begin{enumerate}
-\item
-  The leader $\mathcal{L}(i)$ has to send a lambda message, i.e.~a block,
-\item
-  voters $V_i\setminus \mathcal{L}(i)$ that receive the lambda message need to acknowledge it by sending a lambda response message, i.e.~a ballot which cites the lambda message,
-\item
-  and finally, both the leader and the voters need to acknowledge the lambda response messages by sending an omega message, i.e.~a ballot which cites the lambda response messages that were seen.
-\end{enumerate}
-
-\emph{Assigned weight} is represented as $\boldsymbol{w}(V_i)$.
-
-\subsection{Message validity and in-roundness}
-\label{message-validity-and-in-roundness}
-
-The round exponents determine the schedule for proposing and voting on blocks. A validator \emph{is not allowed} to contribute to consensus by sending messages outside their rounds\footnote{Note by Andreas: I think we should take every opportunity to limit the structure the DAG can have. The more freely the adversary can shape the message graph, the more likely it is that they'll be able to exploit some inefficiencies in e.g.~our fork choice implementation or our finality detector. Limiting to what extent your round exponent can differ from the others', and disallowing more than two ballots (plus one block, if you're the leader) per round, seems like a good way to get that ``arbitrary DAG shape'' problem under control.}. To this end, a message can be considered valid only if it satisfies the following conditions.
-
-Every message $\mu$ by a validator $v$ always belongs to a unique round: $\mu$ explicitly only contains a tick $t$. So we check what the $v$'s current round exponent $n$ is by looking at the last message in $v$'s previous round. Then we find the greatest $i\leq t$ such that $i$ is divisible by $2^n$. Round $i$ of $v$ is the one this message belongs to. Then $\mu$ is valid only if $S(\mu)\in V_i$, and it satisfies either of the following conditions:
-
-\begin{itemize}
-\item
-  $v$ is the round leader of $i$ AND $t = i$,
-\item
-  OR $\mu$ is a ballot and there are no more than 1 messages
-  \emph{from} $v$ before $\mu$ with a tick greater than $i$.
-\end{itemize}
-
-A validator $v$ can be said to have \emph{fully participated in round $i$} if and only if $i \leq T(\mu) <i+2^{n_v(i)}$ holds for each of their messages $\mu$ that is required for finality in round $i$. In other words, each validator, depending on whether they are a leader or a voter, has to send the necessary lambda, lambda response and omega messages required for finalization before their respective round ends. Non-participation does not have to imply not receiving any rewards though---see ``Reward eligibility''.
-
-We define by \emph{in-round messages of round $i$} each \textbf{valid} message $\mu$ by $v\in V_i$ that satisfies $i \leq T(\mu)< i+2^{n_v(i)}$, and we denote it by the property $p_i$. This definition will be used below to introduce a restricted type of summit that is considered only for on-time finalization rewards.
-
-Given a round $i$ of validator $v$, a message is \emph{out-of-round} in the context of $i$ if $T(\mu)\geq i+2^{n_v(i)}$.
-
-Validators do not have to be assigned to a round to vote for the corresponding block. Voting can also happen through out-of-round messages. A message $\mu$ \emph{votes} for for a block $B$ if either of the following conditions are satisfied:
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\item $\mu$ is the block message containing $B$.
-\item $\mu$ is a block message which is a main-descendant of $B$.
-\item $\mu$ is a ballot message, voting explicitly for $B$.
-\item $\mu$ is a ballot message, voting explicitly for a main-descendant of $B$.
-\end{enumerate}
-
-Here, in-round messages fall under (1) and (3), whereas out-of-round messages can fall under (2), (3) or (4). Only in-round messages are considered for OTF, so only assigned validators can contribute their weight for OTF. However, all valid messages are considered for EF, so all validators can contribute their weight for EF.
-
-Also, validators are allowed to \emph{justify} messages from rounds that they are not included in---they are just not be rewarded for it.
-
-\subsection{Assigned weight and eligible blocks}
-\label{assigned-weight-and-eligible-blocks}
-
-The safety theorem dictates that a level-$k$ summit requires a quorum size of at least
-
-\begin{equation}
-q = \frac{\boldsymbol{w}(V)}{2} + \frac{t_f}{2(1-2^{-k})}
-\end{equation}
-
-in order to remain valid for a fault tolerance threshold of $t_f$. We always consider level-1 summits for OTF, so the target quorum size becomes $q=\boldsymbol{w}(V)/2+t_f$. We also target a low $t_f$, e.g.~1\% of total weight, due to the reason explained above. For the given $t_f$, the target quorum size then becomes $q_{OTF} = 0.51 \times \boldsymbol{w}(V)$.
-
-We set $q_{OTF}$ as a protocol parameter and define
-
-\begin{equation}
-B=\{i\in \mathbb{N} \mid \boldsymbol{w}(V_i)\geq q_{OTF}\}
-\end{equation}
-
-to be the set of ticks where the assigned weight is sufficient for OTF. These ticks and the corresponding rounds are said to be \emph{feasible}. Conversely, ticks that do not satisfy this condition are said to be \emph{infeasible}. Only blocks proposed on feasible ticks are eligible for rewards, and participating in an infeasible round does not earn any reward. In other words, a block's finality can be rewarded only if enough validators have announced to vote on it.
-
-It is ideal to have the validators converge on the same round exponent, because then the participated weight would be maximized for each block. For that reason, reward allocated per block is a function of the total weight assigned to the corresponding tick.
-
-\subsection{Finality criteria}
-\label{finality-criteria}
-
-\subsubsection*{On-time finalization}
-\label{on-time-finalization}
-
-OTF is concerned with the finality that is achieved in the short run, with in-round messages. For the sake of detecting this short-term finality, we restrict ourselves to \emph{summits that are achievable only by in-round messages}.
-
-A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by valid in-round messages, so we introduce the property
-
-\begin{equation}
-  p_i = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu) }(i)}\;\text{and}\;\mu\text{ is valid}\}
-\end{equation}
-
-to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
-
-\begin{equation}
-  p'_{i}(\mu) = p'(\mu)\quad\text{and}\quad p_{i}(\mu)
-\end{equation}
-
-and introduce for a round $i$ the summit achievable only by in-round messages as $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q_{OTF})$.
-
-With this extended definition, we are ready to define on-time finality: A block proposed on $i$ is said to be \emph{finalized on time} only if the summit on it $\mathcal{S}_i$ is of level-1 once the rounds of all participants end.
-
-\emph{Participated weight} in the context of a block proposed on $i$ is formally represented as $\boldsymbol{w}(C_1)$, and is restrained by assigned weight, such that $\boldsymbol{w}(C_1) \leq \boldsymbol{w}(V_i)$.
-
-\subsubsection*{Eventual finality}
-\label{eventual-finality}
-
-EF is concerned with the finality that is achieved in the long run, and is not restricted to in-round messages. This way, the weight on a block can increase up to 100\% of the total weight. Unlike OTF, which fails if a base level of weight is not observed by the end of the round, EF is not binary. It exists on a sliding scale: the higher the weight, the better.
-
-The goal is to have all validators voting on a block by the end of the era. Let $\mathcal{S}$ be the summit on a block, according to all the messages sent in the era that the block belongs to. If OTF is successful, then we already have $\boldsymbol{w}(C_1)\geq q_{OTF}$. We define
-
-\begin{equation}
-f_{EF} = \left(\frac{\boldsymbol{w}(C_1) - q_{OTF}}{\boldsymbol{w}(V)-q_{OTF}}\right)^\delta
-\end{equation}
-
-to be a scalar between 0 and 1, which represents the amount of weight voting on a block in addition to the minimum required by OTF. This will be multiplied with the rewards allocated for EF to calculate the final eligible amount. Here, $\delta \in \mathbb{N}$ is a parameter controlling the sensitivity of EF rewards to voting weight. For example, setting $\delta \geq 2$ makes the protocol less tolerant to absent weight.
-
-\subsection{Reward allocation}
-\label{reward-allocation}
-
-Let an era be defined as a consecutive set of ticks, and $B\subset\mathbb{N}$ be the set of feasible ticks in that era (see above). In order for a block to be allocated any reward, it is not enough for it to be feasible. The leader must also be one of the assigned validators:
-
-\begin{equation}
-\bar{B}=\{i\in B \mid \mathcal{L}(i) \in V_i\}
-\end{equation}
-
-Let $r_B$ be the total fixed amount of reward allocated for blocks proposed on each $i\in \bar{B}$, derived from the constant seigniorage rate and total token supply of the previous era:
-
-\begin{equation}
-\begin{split}\begin{aligned}
-\text{supply}(x) &= \text{initial}\_\text{supply}\times (1+\text{seigniorage}\_\text{rate})^{x/\text{eras}\_\text{per}\_\text{year}} \\
-r_B(x) &= \text{supply}(x+1) - \text{supply}(x)
-\end{aligned}\end{split}
-\end{equation}
-
-where $x=0,1,2,\dots$ is the era's index.
-
-Reward allocated per block is a function of assigned weight, but we also want to control how it affects the overall distribution. For that reason, we define the \emph{reward weight} of a tick as
-
-\begin{equation}
-  \rho(i) = (\alpha\boldsymbol{w}(V_i)+(1-\alpha)\boldsymbol{w}(V)-\beta q_{OTF})^\gamma
-\end{equation}
-
-where $\alpha,\beta\in [0,1]$ and $\gamma\in\mathbb{N}$ are protocol parameters: - $\alpha$ controls whether reward allocation is a function of assigned weight. When $\alpha=0$, assigned weight does not influence reward allocation. - $\beta$ controls the steepness of the allocation in terms of the distance of the weight from $q_{OTF}$. - $\gamma$ controls the degree of dependence on assigned weight. It is expected to be set higher than 1, e.g.~$\gamma=2$ to deter a specific form of discouragement attack \footnote{There is an attack vector that arises from rewarding only $V_i$ instead of all validators. A majority could coordinate an attack where they switch their round exponents very often (since you can a new one in any message), and not send their messages to the rest. Then they could participate in rounds others have not acknowledged yet, because others don't receive their messages on time and don't have time to react. Since the majority doesn't need the minority to finalize messages, they can effectively ``lock out'' the minority frequently enough that only $V_i$ receives rewards most of the time. This is a convoluted but viable discouragement attack.}.
-
-The convention $\rho(I)=\sum_{i \in I} \rho(i)$ holds.
-
-Given above definitions, $r:\bar{B}\to \mathbb{Z}_{\geq 0}$ maps a tick to the reward allocated for the corresponding block. Block rewards are allocated proportionally to reward weights:
-
-\begin{equation}
-  r(i) = r_B \frac{\rho(i)}{\rho(\bar{B})}
-\end{equation}
-
-Additionally, we define a parameter $\epsilon$ that dictates the ratio of OTF and EF rewards, i.e.~$r(i)\epsilon$ is allocated for the OTF and $r(i)(1-\epsilon)$ is allocated for the EF of the block proposed on $i$.
-
-\subsection{Reward eligibility}
-\label{reward-eligibility}
-
-Once a block has been proposed and enough time has passed, the history of messages can be examined to detect whether the block was indeed finalized on time, according to the conditions given above.
-
-If the block is not finalized on time, validators do not receive any rewards. In other words, $r(i)$ tokens are burned.
-
-If the block \emph{is} finalized on time, \emph{only the assigned validators} share the allocated OTF reward pro rata, regardless of whether they have sent messages or not. However, EF rewards go to all validators. Each validator $v$ in $V_i$ receives $r(i)\epsilon \,\boldsymbol{w}(v)/\boldsymbol{w}(V_i)$ for OTF and each validator $v\in V$ receives $r(i)(1-\epsilon)f_{EF}\boldsymbol{w}(v)/\boldsymbol{w}(V)$ for EF. To summarize, each $v\in V$ receives
-
-\begin{equation}
-  r_{i,v} = \begin{cases} r(i)\boldsymbol{w}(v)[\epsilon/\boldsymbol{w}(V_i) + (1-\epsilon)f_{EF}/\boldsymbol{w}(V)] &\text{if}\quad v\in V_i\\
-    r(i)\boldsymbol{w}(v)(1-\epsilon)f_{EF}/\boldsymbol{w}(V) & \text{otherwise}
-  \end{cases}
-\end{equation}
-
-for round $i$ if OTF is successful. Note that the EF reward is scaled with $f_{EF}$, which is proportional to the weight that votes in addition to $q_{OTF}$. This means that $r(i)(1-\epsilon)(1-f_{EF})$ tokens are burned for each block, if the eventual weight voting on a block is smaller than 100\% of the total weight.
-
-To be decided: We can think of a less harsh scheme, where the reward decays exponentially with each elapsed round in which the block was not finalized on time. This could be more suitable than burning all of the reward, given the possible failures that can happen at the network layer, especially in the beginning.
-
-\subsection{Disincentives for Underestimating Round Exponents}
-\label{disincentivizing-validators-from-underestimating-round-exponents}
-
-Truthful announcement of round exponents is essential for liveness. However, certain strategies exist where individual validators may earn more rewards by announcing a much lower round exponent than the majority of the validators, e.g.~0. This would function like a catch-all, where the validator would be assigned to every tick and rewarded for feasible rounds with successful OTF, but not punished for being assigned to infeasible rounds. This strategy would simply increase the odds of receiving rewards.
-
-We do not want underestimating round exponents to be a dominant strategy, so we need to introduce a rule that punishes it:
-
-\begin{quote}
-If a validator assigns themself to $\eta$ or more infeasible ticks consecutively, they do not receive any reward from their next feasible round.
-\end{quote}
-
-The allocated reward is simply burned. Here, $\eta$ is a protocol parameter.
-
-Let us assume that each validator $v$ keeps their round exponent constant, at $n_v$. Then the minimum round exponent that does not result in any assignment to an infeasible round is calculated as
-
-\begin{equation}
-  n_{\min} = \min\{n \mid  \boldsymbol{w}(\{v\mid n_v \geq n\}) \geq q_{OTF} \}.
-\end{equation}
-
-With the above rule, we increase the underestimating strategy's minimum viable round exponent from 0 to
-
-\begin{equation}
-  n_\text{underestimate} = n_{\min}-\lfloor \log_2\eta\rfloor.
-\end{equation}
-
-In other words, a validator following the strategy cannot linger more than $\lfloor \log_2\eta\rfloor$ below what most other validators have announced. For example, if $n_{\min}=16$ and $\eta = 5$, setting a round exponent smaller than 14 would result in not getting any reward from feasible rounds.
-
-Moreover, round exponents are not kept constant, and can be set to a new value in any message. Therefore $\eta$ should be set to a value that gives validators enough time to react to a sudden increment or decrement of the overall round exponent, e.g.~at least 3.
-
-
+\input{./seigniorage.tex}
 
 \newpage
 
