@@ -1,0 +1,65 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{url}
+\usepackage{amsfonts, amsthm, amsmath, amssymb}
+\usepackage{stix}
+\usepackage{a4wide}
+\usepackage{hyperref}
+\usepackage{authblk}
+\usepackage{biblatex}
+
+\addbibresource{highway-economics.bib}
+
+\hypersetup{
+    colorlinks=true,
+    urlcolor=blue,
+    citecolor=blue,
+    linkcolor=blue,
+}
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{0.5em}
+
+\title{Economics of the CasperLabs Highway Protocol}
+
+\author[*]{Andreas Fackler}
+\author[*]{Alexander Limonov}
+\author[*]{Onur Solmaz}
+
+\affil[*]{CasperLabs}
+
+\date{May 2020}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\pagebreak
+
+
+\begin{abstract}
+  The CasperLabs Highway protocol was previously introduced in \cite{kane2019casperlabs}. Here, we encapsulate the economic aspects of the CasperLabs Highway Protocol. We introduce the incentive mechanisms that are designed to keep the network running in an optimal condition, such as seigniorage, transaction fee distribution and slashing. Concepts are introduced pragmatically, followed by the application of formal analysis. We also explore the viabilities of malicious and unwanted behaviors, such as cartel formation, censorship and freeloading.
+\end{abstract}
+
+
+\section*{Introduction}
+
+\section*{Seigniorage}
+
+
+\newpage
+
+\printbibliography
+
+\end{document}
+
