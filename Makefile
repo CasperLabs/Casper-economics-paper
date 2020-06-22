@@ -14,4 +14,4 @@ view: report
 	open $(DOCNAME).pdf
 
 clean:
-	rm -f *.blg *.bbl *.aux *.log *.toc *.run.xml *.out *.bcf *.pdf
+	rm -f *.blg *.bbl *.aux *.log *.toc *.run.xml *.out *.bcf *.pdf *.dvi *_latexmk *.fls
