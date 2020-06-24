@@ -1,6 +1,6 @@
 \section{Seigniorage}
 
-In Highway, validators are rewarded for proposing and finalizing blocks. New tokens are minted at the end of each era through seigniorage, and distributed to validators according to their performance in that era. We do not have constant block rewards as in Proof of Work blockchains like Bitcoin and Ethereum---instead, a constant reward is allocated for each protocol round, and paid out to validators while looking at multiple factors, such as finality and participated weight. We immediately make the following distinction to avoid future confusion:
+In Highway, validators are rewarded for proposing and finalizing blocks. New tokens are minted at the end of each era through seigniorage, and distributed to validators according to their performance in that era. We do not have constant block rewards as in Proof of Work blockchains like Bitcoin and Ethereum---instead, a certain amount of reward is allocated for each protocol round\footnote{We don't set the round reward to a constant value, because the CLX supply is set to be compounded continuously. Effectively, the round reward will appear to be constant in the short term, but will indeed grow at a very small but an ever-increasing rate, in order to keep the \emph{rate} of supply growth constant. See Section~\ref{sec:reward-allocation-eligibility} for more details.}, and paid out to validators while looking at multiple factors, such as finality and participated weight. We immediately make the following distinction to avoid future confusion:
 
 \begin{description}
 \item[Weight:] a validator's bonded stake used in consensus.
@@ -122,21 +122,21 @@ to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
   p'_{i}(\mu) = p'(\mu)\quad\text{and}\quad p_{i}(\mu)
 \end{equation}
 
-and introduce for a round $i$ the maximal summit achievable only by in-round messages, $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q_{OTF})$.
+and introduce for a round $i$ the maximal level-1 summit achieved only by in-round messages, $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q)$. We use \emph{participated weight} as a synonym for $q$, that is, the quorum size of the maximal level-1 summit.
 
-With this extended definition, we are ready to define on-time finality: A \PROP sent on $i$ is said to be \emph{finalized on time} only if the summit on it $\mathcal{S}_i$ is of level-1 once the rounds of all participants end.
+With this extended definition, we are ready to define on-time finality: A \PROP sent on $i$ is said to be \emph{finalized on time} only if $q \geq q_{OTF}$ once the rounds of all participants end.
 
-\emph{Participated weight} in the context of a \PROP sent on $i$ is formally represented as $\boldsymbol{w}(C_1)$, and is restrained by assigned weight, such that $\boldsymbol{w}(C_1) \leq \boldsymbol{w}(V_i)$.
+We also note that participated weight must be less than or equal to assigned weight, that is, $q \leq \boldsymbol{w}(V_i)$, as a consequence of the round schedule.
 
 \subsubsection*{Eventual Finality}
 \label{sec:eventual-finality}
 
 EF is concerned with the finality that is achieved in the long run, and is not restricted to in-round messages. This way, the weight on a \PROP can increase up to 100\% of the total weight. Unlike OTF, which fails if a base level of weight is not observed by the end of the round, EF is not binary. It exists on a sliding scale: the higher the weight, the better.
 
-The goal is to have all validators voting on a \PROP by the end of the era. Let $\mathcal{S}$ be the summit on a \PROP, according to all the messages sent in the era that the \PROP belongs to. If OTF is successful, then we already have $\boldsymbol{w}(C_1)\geq q_{OTF}$. We define
+The goal is to have all validators voting on a \PROP by the end of the era. Let $\mathcal{S}$ be the maximal level-1 summit on a \PROP, according to all messages sent until the end of the era. If OTF was successful, then we already have $q\geq q_{OTF}$. We define
 
 \begin{equation}
-f_{EF} = \left(\frac{\boldsymbol{w}(C_1) - q_{OTF}}{\boldsymbol{w}(V)-q_{OTF}}\right)^\delta
+f_{EF} = \left(\frac{q - q_{OTF}}{\boldsymbol{w}(V)-q_{OTF}}\right)^\delta
 \end{equation}
 
 to be a scalar between 0 and 1, which represents the amount of weight voting on a \PROP in addition to the minimum required by OTF. This will be multiplied with the rewards allocated for EF to calculate the final eligible amount. Here, $\delta \in \mathbb{N}$ is a parameter controlling the sensitivity of EF rewards to voting weight. For example, setting $\delta \geq 2$ makes the protocol less tolerant to absent weight.
