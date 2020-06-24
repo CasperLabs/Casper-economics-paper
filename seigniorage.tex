@@ -32,9 +32,9 @@ We mean by \emph{round $i$ of validator $v$} the period that starts at tick $i$ 
 \item \textbf{Proposal phase:}
   The leader $\mathcal{L}(i)$ has to send a \PROP{} (i.e. a proposal message, which may or may not contain transactions).
 \item \textbf{Confirmation phase:}
-  Voters $V_i\setminus \mathcal{L}(i)$ that receive the \PROP need to acknowledge it by sending a \CONF (i.e. a confirmation message, which may or may not contain transactions), i.e.~a ballot which cites the \PROP.
+  Voters $V_i\setminus \mathcal{L}(i)$ that receive the \PROP need to acknowledge it by sending a \CONF, that is, a confirmation message, which may or may not contain transactions, and which cites the \PROP.
 \item \textbf{Attestation phase:}
-  Both the leader and the voters need to acknowledge the \CONF{}s by sending a \WIT{} (i.e. a witness message, which may or may not contain transactions), i.e.~a ballot which cites the \CONF{}s that they have seen.
+  Both the leader and the voters need to acknowledge the \CONF{}s by sending a \WIT{} (i.e. a witness message, which may or may not contain transactions), i.e.~a message which cites the \CONF{}s that they have seen.
 \end{enumerate}
 
 We denote by $V_{i}=\{v\in V \mid i \mod 2^{n_v(i)} = 0\}$ the subset of validators that is scheduled to participate in round $i$. \emph{Assigned weight} of a round $i$, defined in the previous section, is denoted by $\boldsymbol{w}(V_i)$.
@@ -46,15 +46,15 @@ Each validator is assessed according to their own round exponent. All assigned v
 \subsection{Message Validity}
 \label{sec:message-validity}
 
-The round exponents determine the schedule for proposing and voting on blocks. Validators \emph{are not allowed} to contribute to consensus by sending messages outside their rounds\footnote{Note by Andreas: I think we should take every opportunity to limit the structure the DAG can have. The more freely the adversary can shape the message graph, the more likely it is that they'll be able to exploit some inefficiencies in e.g.~our fork choice implementation or our finality detector. Limiting to what extent your round exponent can differ from the others', and disallowing more than two ballots (plus one block, if you're the leader) per round, seems like a good way to get that ``arbitrary DAG shape'' problem under control.}. In the next paragraph, we present validity conditions for messages.
+The round exponents determine the schedule for proposing and voting on blocks. Validators \emph{are not allowed} to contribute to consensus by sending messages outside their rounds. In the next paragraph, we present validity conditions for messages.
 
 Every message $\mu$ by a validator $v$ always belongs to a unique round: $\mu$ explicitly only contains a tick $t$. So we check what the $v$'s current round exponent $n$ is by looking at the last message in $v$'s previous round. Then we find the greatest $i\leq t$ such that $i$ is divisible by $2^n$. Round $i$ of $v$ is the one this message belongs to. Then $\mu$ is valid only if $S(\mu)\in V_i$, and it satisfies either of the following conditions:
 
 \begin{itemize}
 \item
-  $v$ is the round leader of $i$ AND $t = i$,
+  $v$ is the round leader of $i$ AND $t = i$ (implying that $\mu$ is a \PROP),
 \item
-  OR $\mu$ is a ballot and there are no more than 1 messages
+  OR $\mu$ is a \CONF or \WIT, and there are no more than 1 messages
   \emph{from} $v$ before $\mu$ with a tick greater than $i$.
 \end{itemize}
 
@@ -113,7 +113,7 @@ OTF is concerned with the finality that is achieved in the short run, with in-ro
 A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by valid in-round messages, so we introduce the property
 
 \begin{equation}
-  p_i = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu) }(i)}\;\text{and}\;\mu\text{ is valid}\}
+  p_i = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu) }(i)}\}
 \end{equation}
 
 to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
@@ -122,7 +122,7 @@ to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
   p'_{i}(\mu) = p'(\mu)\quad\text{and}\quad p_{i}(\mu)
 \end{equation}
 
-and introduce for a round $i$ the summit achievable only by in-round messages as $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q_{OTF})$.
+and introduce for a round $i$ the maximal summit achievable only by in-round messages, $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q_{OTF})$.
 
 With this extended definition, we are ready to define on-time finality: A \PROP sent on $i$ is said to be \emph{finalized on time} only if the summit on it $\mathcal{S}_i$ is of level-1 once the rounds of all participants end.
 
