@@ -1,6 +1,6 @@
 \section{Seigniorage}
 
-In Highway, validators are rewarded for proposing and finalizing blocks. New tokens are minted at the end of each era through seigniorage, and distributed to validators according to their performance in that era. We do not have constant block rewards as in Proof of Work blockchains like Bitcoin and Ethereum---instead, a constant reward is allocated for each protocol round, and paid out to validators while looking at multiple factors, such as finality and participated weight. We immediately make the following distinction to avoid future confusion:
+In Highway, validators are rewarded for proposing and finalizing blocks. New tokens are minted at the end of each era through seigniorage, and distributed to validators according to their performance in that era. We do not have constant block rewards as in Proof of Work blockchains like Bitcoin and Ethereum---instead, a certain amount of reward is allocated for each protocol round\footnote{We don't set the round reward to a constant value, because the CLX supply is set to be compounded continuously. Effectively, the round reward will appear to be constant in the short term, but will indeed grow at a very small but an ever-increasing rate, in order to keep the \emph{rate} of supply growth constant. See Section~\ref{sec:reward-allocation-eligibility} for more details.}, and paid out to validators while looking at multiple factors, such as finality and participated weight. We immediately make the following distinction to avoid future confusion:
 
 \begin{description}
 \item[Weight:] a validator's bonded stake used in consensus.
@@ -32,9 +32,9 @@ We mean by \emph{round $i$ of validator $v$} the period that starts at tick $i$ 
 \item \textbf{Proposal phase:}
   The leader $\mathcal{L}(i)$ has to send a \PROP{} (i.e. a proposal message, which may or may not contain transactions).
 \item \textbf{Confirmation phase:}
-  Voters $V_i\setminus \mathcal{L}(i)$ that receive the \PROP need to acknowledge it by sending a \CONF (i.e. a confirmation message, which may or may not contain transactions), i.e.~a ballot which cites the \PROP.
+  Voters $V_i\setminus \mathcal{L}(i)$ that receive the \PROP need to acknowledge it by sending a \CONF, that is, a confirmation message, which may or may not contain transactions, and which cites the \PROP.
 \item \textbf{Attestation phase:}
-  Both the leader and the voters need to acknowledge the \CONF{}s by sending a \WIT{} (i.e. a witness message, which may or may not contain transactions), i.e.~a ballot which cites the \CONF{}s that they have seen.
+  Both the leader and the voters need to acknowledge the \CONF{}s by sending a \WIT{} (i.e. a witness message, which may or may not contain transactions), i.e.~a message which cites the \CONF{}s that they have seen.
 \end{enumerate}
 
 We denote by $V_{i}=\{v\in V \mid i \mod 2^{n_v(i)} = 0\}$ the subset of validators that is scheduled to participate in round $i$. \emph{Assigned weight} of a round $i$, defined in the previous section, is denoted by $\boldsymbol{w}(V_i)$.
@@ -46,15 +46,15 @@ Each validator is assessed according to their own round exponent. All assigned v
 \subsection{Message Validity}
 \label{sec:message-validity}
 
-The round exponents determine the schedule for proposing and voting on blocks. Validators \emph{are not allowed} to contribute to consensus by sending messages outside their rounds\footnote{Note by Andreas: I think we should take every opportunity to limit the structure the DAG can have. The more freely the adversary can shape the message graph, the more likely it is that they'll be able to exploit some inefficiencies in e.g.~our fork choice implementation or our finality detector. Limiting to what extent your round exponent can differ from the others', and disallowing more than two ballots (plus one block, if you're the leader) per round, seems like a good way to get that ``arbitrary DAG shape'' problem under control.}. In the next paragraph, we present validity conditions for messages.
+The round exponents determine the schedule for proposing and voting on blocks. Validators \emph{are not allowed} to contribute to consensus by sending messages outside their rounds. In the next paragraph, we present validity conditions for messages.
 
 Every message $\mu$ by a validator $v$ always belongs to a unique round: $\mu$ explicitly only contains a tick $t$. So we check what the $v$'s current round exponent $n$ is by looking at the last message in $v$'s previous round. Then we find the greatest $i\leq t$ such that $i$ is divisible by $2^n$. Round $i$ of $v$ is the one this message belongs to. Then $\mu$ is valid only if $S(\mu)\in V_i$, and it satisfies either of the following conditions:
 
 \begin{itemize}
 \item
-  $v$ is the round leader of $i$ AND $t = i$,
+  $v$ is the round leader of $i$ AND $t = i$ (implying that $\mu$ is a \PROP),
 \item
-  OR $\mu$ is a ballot and there are no more than 1 messages
+  OR $\mu$ is a \CONF or \WIT, and there are no more than 1 messages
   \emph{from} $v$ before $\mu$ with a tick greater than $i$.
 \end{itemize}
 
@@ -113,7 +113,7 @@ OTF is concerned with the finality that is achieved in the short run, with in-ro
 A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by valid in-round messages, so we introduce the property
 
 \begin{equation}
-  p_i = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu) }(i)}\;\text{and}\;\mu\text{ is valid}\}
+  p_i = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu) }(i)}\}
 \end{equation}
 
 to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
@@ -122,24 +122,24 @@ to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
   p'_{i}(\mu) = p'(\mu)\quad\text{and}\quad p_{i}(\mu)
 \end{equation}
 
-and introduce for a round $i$ the summit achievable only by in-round messages as $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q_{OTF})$.
+and introduce for a round $i$ the maximal level-1 summit achieved only by in-round messages, $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q)$. We use \emph{participated weight} as a synonym for $q$, that is, the quorum size of the maximal level-1 summit.
 
-With this extended definition, we are ready to define on-time finality: A \PROP sent on $i$ is said to be \emph{finalized on time} only if the summit on it $\mathcal{S}_i$ is of level-1 once the rounds of all participants end.
+With this extended definition, we are ready to define on-time finality: A \PROP sent on $i$ is said to be \emph{finalized on time} only if $q \geq q_{OTF}$ once the rounds of all participants end.
 
-\emph{Participated weight} in the context of a \PROP sent on $i$ is formally represented as $\boldsymbol{w}(C_1)$, and is restrained by assigned weight, such that $\boldsymbol{w}(C_1) \leq \boldsymbol{w}(V_i)$.
+We also note that participated weight must be less than or equal to assigned weight, that is, $q \leq \boldsymbol{w}(V_i)$, as a consequence of the round schedule.
 
 \subsubsection*{Eventual Finality}
 \label{sec:eventual-finality}
 
 EF is concerned with the finality that is achieved in the long run, and is not restricted to in-round messages. This way, the weight on a \PROP can increase up to 100\% of the total weight. Unlike OTF, which fails if a base level of weight is not observed by the end of the round, EF is not binary. It exists on a sliding scale: the higher the weight, the better.
 
-The goal is to have all validators voting on a \PROP by the end of the era. Let $\mathcal{S}$ be the summit on a \PROP, according to all the messages sent in the era that the \PROP belongs to. If OTF is successful, then we already have $\boldsymbol{w}(C_1)\geq q_{OTF}$. We define
+The goal is to have all validators voting on a \PROP by the end of the era. Let $\mathcal{S}$ be the maximal level-1 summit on a \PROP, according to all messages sent until the end of the era. If OTF was successful, then we already have $q\geq q_{OTF}$. We define
 
 \begin{equation}
-f_{EF} = \left(\frac{\boldsymbol{w}(C_1) - q_{OTF}}{\boldsymbol{w}(V)-q_{OTF}}\right)^\delta
+f_{EF} = \frac{q - q_{OTF}}{\boldsymbol{w}(V)-q_{OTF}}
 \end{equation}
 
-to be a scalar between 0 and 1, which represents the amount of weight voting on a \PROP in addition to the minimum required by OTF. This will be multiplied with the rewards allocated for EF to calculate the final eligible amount. Here, $\delta \in \mathbb{N}$ is a parameter controlling the sensitivity of EF rewards to voting weight. For example, setting $\delta \geq 2$ makes the protocol less tolerant to absent weight.
+to be a scalar between 0 and 1, which represents the amount of weight voting on a \PROP in addition to the minimum required by OTF. This will be multiplied with the rewards allocated for EF to calculate the final eligible amount.
 
 \subsection{Reward Allocation and Eligibility}
 \label{sec:reward-allocation-eligibility}
@@ -150,22 +150,36 @@ Let an era be defined as a consecutive set of ticks, and $I\subset\mathbb{N}$ be
 \bar{I}=\{i\in I \mid \mathcal{L}(i) \in V_i\}
 \end{equation}
 
-We introduce the following function to calculate the total supply of CLX
+We introduce the function
 
 \begin{equation}
 Q(i) = Q_0 (1+\sigma)^{i/\text{ticks\_per\_year}}
 \end{equation}
 
-where $Q_0$ is the initial supply, $\sigma$ is the yearly seiginorage rate and $\text{ticks\_per\_year} = 365\times 24\times 60 \times 60 \times 1000 = 31,\!536,\!000,\!000$.
+to model how the CLX supply would evolve under \emph{ideal conditions}\footnote{The function $Q$ does not dictate the exact size of the supply, but rather, used to set an upper limit to how much it can be at a given tick.}. Here, $Q_0$ is the initial supply, $\sigma$ is the yearly seiginorage rate and $\text{ticks\_per\_year} = 365\times 24\times 60 \times 60 \times 1000 = 31,\!536,\!000,\!000$. However, CLX supply will most likely not grow ideally, due to slashings and rounds which are not rewarded. Our goal is to make the \emph{real} rate of seigniorage stay constant, so we need to base round rewards on the current supply, rather than the ideal.
 
-
-We assume that there is an optimal round exponent, $n^\ast$ , which all the validators should operate at, given nominal conditions. We introduce the function, $r:\bar{I}\to \mathbb{Z}_{\geq 0}$, which maps a tick to the corresponding round reward:
+Instead of forcing the protocol to keep track of changes to supply on a block-by-block basis, we take the final supply of the previous era as a benchmark, to calculate how much the round reward should be for a given era, throughout which it stays constant. This greatly reduces the complexity of what needs to be implemented without sacrificing anything that is crucial for seigniorage to work. We also assume that there is an optimal round exponent, $n^\ast$ , which all the validators should operate at, in ideal conditions. This allows us to derive the seigniorage rate for an optimal round
 
 \begin{equation}
-  r(i) = \pow(2, {\min(n_{\mathcal{L}(i)}(i) - n^\ast, 0)}) \times (Q(i + 2^{n^\ast}) - Q(i))
+  \sigma^\ast = \pow(1 + \sigma, 2^{n^\ast}/\text{ticks\_per\_year}) - 1
 \end{equation}
 
-This expression demands an explanation: While we allow for round exponents lower than $n^\ast$---i.e. rounds faster than optimum---, we also throttle the round reward accordingly, to eliminate the incentives to underestimate round exponents\footnote{Specifically, the scenario where validators propose empty blocks with very small round exponents in order to receive more seigniorage. This is a viable scenario, because smaller blocks can be propagated faster.}. For round exponents smaller than $n^\ast$, the reward received per unit time is kept roughly constant owing to the factor on the left. For round exponents larget than $n^\ast$, however, the reward received per unit time decreases, because this time, the reward per round is kept constant. This way, validators are disincentivized from participating in rounds slowlier than the optimum speed.
+Then, we can calculate the \emph{base round reward} for a given era as
+
+\begin{equation}
+  r^\ast = \sigma^\ast Q_\text{prev}
+\end{equation}
+
+where $Q_\text{prev}$ is the final supply of the previous era.
+
+Finally, we introduce the function, $r:\bar{I}\to \mathbb{Z}_{\geq 0}$, which maps a tick to the corresponding round reward:
+
+\begin{equation}
+  % r(i) = \pow(2, {\min(n_{\mathcal{L}(i)}(i) - n^\ast, 0)}) \times (Q(i + 2^{n^\ast}) - Q(i))
+  r(i) = r^\ast\pow(2, {\min(n_{\mathcal{L}(i)}(i) - n^\ast, 0)})
+\end{equation}
+
+This expression demands an explanation: While we allow for round exponents lower than $n^\ast$---i.e. rounds faster than optimum---, we also throttle the round reward accordingly, to eliminate the incentives to underestimate round exponents\footnote{Specifically, the scenario where validators propose empty blocks with very small round exponents in order to receive more seigniorage. This is a viable strategy, because smaller blocks can be propagated faster.}. For round exponents smaller than $n^\ast$, the reward received per unit time is kept constant by halving the base round reward. For round exponents larger than $n^\ast$, however, the reward received per unit time decreases, because this time, the reward per round is kept constant. This way, validators are disincentivized from participating in rounds more slowly than the optimum speed.
 
 Additionally, we define a parameter $\epsilon$ that dictates the ratio of OTF and EF rewards, i.e.~$r(i)\epsilon$ is allocated for the OTF and $r(i)(1-\epsilon)$ is allocated for the EF of the \PROP sent on $i$.
 
