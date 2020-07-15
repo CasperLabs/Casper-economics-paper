@@ -1,4 +1,4 @@
-# Economics of the Highway Protocol
+# Economics of the CasperLabs Blockchain
 
 The CasperLabs Highway protocol was previously introduced [here](https://github.com/CasperLabs/highway). In this paper, we encapsulate the economic aspects of the CasperLabs blockchain. We introduce the incentive mechanisms that are designed to keep the network running in an optimal condition, such as seigniorage, transaction fee distribution and slashing. Concepts are introduced pragmatically, followed by the application of formal analysis. We also explore the viabilities of malicious and unwanted behaviors, such as cartel formation, censorship and freeloading.
 

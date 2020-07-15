@@ -1,0 +1,130 @@
+\section{Preliminaries}
+
+\subsection{Rounds and the Round Schedule}
+\label{sec:schedule}
+
+Let $V$ be the set of validators, and be $\boldsymbol{w}:V\to \mathbb{R}_{\geq 0}$ a map assigning to each validator $v\in V$ their weight (and other conventions follow from the Highway paper).
+
+The schedule with which validators send messages are determined by the validators' rounds, which are in turn determined by their round exponents. A validator with the round exponent $n$ can and has to participate in rounds that repeat every $2^n$ ticks. When a validator wants to adjust its round exponent, they can announce a new value \emph{in any message}. But the new value comes into force \emph{once the round that they have made the announcement ends}. Eventually, the announcements yield a map $n_v: \mathbb{N}\to \mathbb{N}$ which maps each validator $v$ to the announced round exponents. Also, the above rule dictates that $n_v(i)=n_v(i-1)$ unless $i$ is a multiple of both $2^{n_v(i)}$ and $2^{n_v(i-1)}$. The \emph{schedule} then refers to the set of all $n_v$ for each $v$. See \cite{kane2019casperlabs}, section \emph{Leaders and Ticks} for more details.
+
+We mean by \emph{round $i$ of validator $v$} the period that starts at tick $i$ in which $v$ has to participate. When we just mention \emph{round} $i$ without referring to a validator, we mean all rounds that start at $i$. Given a round $i$, the leader is scheduled to propose a block $\mathcal{L}(i)$ if the condition $i\mod 2^{n_{\mathcal{L}(i)}(i)}=0$ is satisfied. Rounds are conceptually divided into three phases:
+
+\begin{enumerate}
+\item \textbf{Proposal phase:}
+  The leader $\mathcal{L}(i)$ has to send a \PROP{} (i.e. a proposal message, which may or may not contain transactions).
+\item \textbf{Confirmation phase:}
+  Voters $V_i\setminus \mathcal{L}(i)$ that receive the \PROP need to acknowledge it by sending a \CONF, that is, a confirmation message, which may or may not contain transactions, and which cites the \PROP.
+\item \textbf{Attestation phase:}
+  Both the leader and the voters need to acknowledge the \CONF{}s by sending a \WIT{} (i.e. a witness message, which may or may not contain transactions), i.e.~a message which cites the \CONF{}s that they have seen.
+\end{enumerate}
+
+We denote by $V_{i}=\{v\in V \mid i \mod 2^{n_v(i)} = 0\}$ the subset of validators that is scheduled to participate in round $i$. \emph{Assigned weight} of a round $i$, defined in the previous section, is denoted by $\boldsymbol{w}(V_i)$.
+
+If the leader does not send a \PROP, voters cannot send \CONF{}s--- because a \CONF that does not cite the same round's \PROP is deemed invalid---, but they can still send \WIT{}s, which cite and contribute to the finality of any previous messages.
+
+Each validator is assessed according to their own round exponent. All assigned validators become eligible to receive rewards as long as the round gets finalized with messages that were sent within each validator's own round. If everything goes as planned, at the end of a round, the leader's proposal is finalized, but probably nothing else. Other messages get finalized only when they get cited by the next leader's \PROP. \emph{For that reason, we use ``finalized round'' as a synonym for ``finalized \PROP'', and nothing else, throughout this paper.} Here, we intentionally do not make a distinction between blocks and other types of messages, because Highway is agnostic of whether a message contains transactions or not. All three types of messages introduced above could be set to contain transactions, classifying them as blocks. However, the seigniorage incentive mechanism is not concerned with such a distinction. It only focuses on whether the \PROP is finalized, and if so, the weight of the committee that finalized it.
+
+\subsection{Message Validity}
+\label{sec:message-validity}
+
+The round exponents determine the schedule for proposing and voting on blocks. Validators \emph{are not allowed} to contribute to consensus by sending messages outside their rounds. In the next paragraph, we present validity conditions for messages.
+
+Every message $\mu$ by a validator $v$ always belongs to a unique round: $\mu$ explicitly only contains a tick $t$. So we check what the $v$'s current round exponent $n$ is by looking at the last message in $v$'s previous round. Then we find the greatest $i\leq t$ such that $i$ is divisible by $2^n$. Round $i$ of $v$ is the one this message belongs to. Then $\mu$ is valid only if $S(\mu)\in V_i$, and it satisfies either of the following conditions:
+
+\begin{itemize}
+\item
+  $v$ is the round leader of $i$ AND $t = i$ (implying that $\mu$ is a \PROP),
+\item
+  OR $\mu$ is a \CONF or \WIT, and there are no more than 1 messages
+  \emph{from} $v$ before $\mu$ with a tick greater than $i$.
+\end{itemize}
+
+A validator $v$ can be said to have \emph{fully participated in round $i$} if and only if $i \leq T(\mu) <i+2^{n_v(i)}$ holds for each of their messages $\mu$ that is required for finality in round $i$. In other words, each validator, depending on whether they are a leader or a voter, has to send the necessary \PROP, \CONF and \WIT messages required for finalization before their respective round ends. Non-participation does not have to imply not receiving any rewards though---see Section~\ref{sec:reward-allocation-eligibility}.
+
+
+
+
+\subsection{Different Types of Finality}
+\label{sec:finality-criteria}
+
+Finality in the CasperLabs blockchain is the degree of certainty with which a block will not be orphaned and continue to be a part of the canonical chain, as usual in other Byzantine fault-tolerant protocols.
+
+\subsubsection*{On-Time Finalization}
+\label{sec:on-time-finalization}
+
+Validators should finalize rounds on time, by sending required messages before their respective rounds end. We set OTF to require only a small but sufficient participating weight, for a simple reason: the probability of receiving a message on time decreases as the duration required for that approaches network propagation delay, so there is a trade-off between round lengths and assigned weight. We favor faster rounds over higher short-term safety guarantees, and argue that the latter can be achieved once the rounds end.
+
+
+We define by \emph{$v$'s in-round messages} each message $\mu$ that satisfies $i \leq T(\mu)< i+2^{n_v(i)}$, and we denote it by the property $p_{i,v}$. Note that this also includes messages from other validators. This definition will be used below to introduce a restricted type of summit that is considered only for on-time finalization rewards.
+
+% Given a round $i$ of validator $v$, a message is \emph{out-of-round} in the context of $i$ if $T(\mu)\geq i+2^{n_v(i)}$.
+
+
+OTF is concerned with the finality that is achieved in the short run, with in-round messages. For the sake of detecting this short-term finality, we restrict ourselves to \emph{summits that are achievable only by in-round messages}.
+
+A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by $v$'s in-round messages, so we introduce the property
+
+\begin{equation}
+  p_{i,v} = \{\mu \mid i \leq T(\mu)< i+2^{n_v(i)}\}
+\end{equation}
+
+to be true for messages sent in round $i$. Then we extend $p'$ to obtain
+
+\begin{equation}
+  p'_{i,v}(\mu) = p'(\mu)\quad\text{and}\quad p_{i,v}(\mu)
+\end{equation}
+
+and introduce for $v$'s round $i$ the maximal level-1 summit achieved only by $v$'s in-round messages, $\mathcal{S}_{i,v}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i,v},q_{i,v})$. We use \emph{participated weight} as a synonym for $q_{i,v}$, the quorum size of the maximal level-1 summit. Participated weight cannot be greater than assigned weight, that is, $q_{i,v} \leq \boldsymbol{w}(V_i)$, as a consequence of the round schedule.
+
+In order to call a round finalized on-time, we require a certain quorum size, $q_{OTF}$, which is a protocol parameter. To find out its value, we make use of the safety theorem:
+
+\begin{theorem}
+  A level-$k$ summit requires a quorum size of at least
+
+  \begin{equation}
+    q = \frac{\boldsymbol{w}(V)}{2} + \frac{t_f}{2(1-2^{-k})}
+  \end{equation}
+
+  in order to remain valid for a fault tolerance threshold of $t_f$.
+\end{theorem}
+
+We always consider level-1 summits for OTF, so the target quorum size becomes $q_{OTF}=\boldsymbol{w}(V)/2+t_f$. We also target a low $t_f$, e.g.~1\% of total weight. For the given fault tolerance threshold, we obtain $q_{OTF} = 0.51 \times \boldsymbol{w}(V)$.
+
+A tick $i$ is said to be \emph{feasible} if $\boldsymbol{w}(V_i)\geq q_{OTF}$; otherwise, it is said to be \emph{infeasible}. Rounds that start on feasible ticks are also said to be feasible. That is because the rounds that do not satisfy this condition cannot be finalized on time. Only feasible rounds are eligible for rewards, and participating in an infeasible round does not earn any reward.
+
+Finally, we can define on-time finality:
+
+\begin{definition}[On-time finality]
+  A \PROP sent on $i$ is said to be \emph{finalized on time in $v$'s perspective} only if $q_{i,v} \geq q_{OTF}$ once $v$'s round ends.
+\end{definition}
+
+We introduce the function
+
+\begin{equation}
+  f_i(v) =
+  \begin{cases}
+    1 & \text{if } q_{i,v} \geq q_{OTF} \\
+    0 & \text{otherwise}
+  \end{cases}
+\end{equation}
+
+to be used later on.
+
+\subsubsection*{Eventual Finality}
+\label{sec:eventual-finality}
+
+EF is concerned with the finality that is achieved in the long run, and is not restricted to in-round messages. Quorum size of a summit on a message can increase, because voting can also happen through messages in the subsequent rounds. A message $\mu$ \emph{votes} for a \PROP $P$ if either of the following conditions are satisfied:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item $\mu$ is $P$ itself.
+\item $\mu$ is a \PROP which is a main-descendant of $P$.
+\item $\mu$ is a \CONF or \WIT, voting explicitly for $P$.
+\item $\mu$ is a \CONF or \WIT, voting explicitly for a main-descendant of $P$.
+\end{enumerate}
+
+Therefore, a \PROP can be finalized at a later round, even though it is not finalized on time.
+
+On a side note, validators are also allowed to cite messages from rounds that they are not included in.
+
+% TODO: Add why we would not include rewards for eventual finality

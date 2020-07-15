@@ -1,5 +1,10 @@
 \section{Seigniorage}
 
+% Outline which type of behavior we want to incentivize:
+
+% It is ideal to have the validators converge on the same round exponent, because then the participated weight would be maximized for each round. For that reason, reward allocated per round is a function of the total weight assigned to the corresponding tick.
+
+
 In Highway, validators are rewarded for proposing and finalizing blocks. New tokens are minted at the end of each era through seigniorage, and distributed to validators according to their performance in that era. We do not have constant block rewards as in Proof of Work blockchains like Bitcoin and Ethereum---instead, a certain amount of reward is allocated for each protocol round\footnote{We don't set the round reward to a constant value, because the CLX supply is set to be compounded continuously. Effectively, the round reward will appear to be constant in the short term, but will indeed grow at a very small but an ever-increasing rate, in order to keep the \emph{rate} of supply growth constant. See Section~\ref{sec:reward-allocation-eligibility} for more details.}, and paid out to validators while looking at multiple factors, such as finality and participated weight. We immediately make the following distinction to avoid future confusion:
 
 \begin{description}
@@ -19,127 +24,45 @@ We emulate the evolution of finality in Proof of Work blockchains by having vali
 
 For a given round, complementary portions of the round reward is allocated for OTF and EF respectively. Eligibility for OTF rewards follows an all-or-nothing approach: it is burned if the round is not finalized on time. EF eligibility, on the other hand, exists on a sliding scale: the more weight votes in a round, the more of the allocated portion is rewarded. This incentivizes validators to increase the weight voting for blocks in the long run.
 
-\subsection{Rounds and the Round Schedule}
-\label{sec:schedule}
 
-Let $V$ be the set of validators, and be $\boldsymbol{w}:V\to \mathbb{R}_{\geq 0}$ a map assigning to each validator $v\in V$ their weight (and other conventions follow from the Highway paper).
+% \subsection{Finality Criteria}
+% \label{sec:finality-criteria}
 
-The schedule with which validators send messages are determined by the validators' rounds, which are in turn determined by their round exponents. A validator with the round exponent $n$ can and has to participate in rounds that repeat every $2^n$ ticks. When a validator wants to adjust its round exponent, they can announce a new value \emph{in any message}. But the new value comes into force \emph{once the round that they have made the announcement ends}. Eventually, the announcements yield a map $n_v: \mathbb{N}\to \mathbb{N}$ which maps each validator $v$ to the announced round exponents. Also, the above rule dictates that $n_v(i)=n_v(i-1)$ unless $i$ is a multiple of both $2^{n_v(i)}$ and $2^{n_v(i-1)}$. The \emph{schedule} then refers to the set of all $n_v$ for each $v$. See \cite{kane2019casperlabs}, section \emph{Leaders and Ticks} for more details.
+% \subsubsection*{On-Time Finalization}
+% \label{sec:on-time-finalization}
 
-We mean by \emph{round $i$ of validator $v$} the period that starts at tick $i$ in which $v$ has to participate. When we just mention \emph{round} $i$ without referring to a validator, we mean all rounds that start at $i$. Given a round $i$, the leader is scheduled to propose a block $\mathcal{L}(i)$ if the condition $i\mod 2^{n_{\mathcal{L}(i)}(i)}=0$ is satisfied. Rounds are conceptually divided into three phases:
+% OTF is concerned with the finality that is achieved in the short run, with in-round messages. For the sake of detecting this short-term finality, we restrict ourselves to \emph{summits that are achievable only by in-round messages}.
 
-\begin{enumerate}
-\item \textbf{Proposal phase:}
-  The leader $\mathcal{L}(i)$ has to send a \PROP{} (i.e. a proposal message, which may or may not contain transactions).
-\item \textbf{Confirmation phase:}
-  Voters $V_i\setminus \mathcal{L}(i)$ that receive the \PROP need to acknowledge it by sending a \CONF, that is, a confirmation message, which may or may not contain transactions, and which cites the \PROP.
-\item \textbf{Attestation phase:}
-  Both the leader and the voters need to acknowledge the \CONF{}s by sending a \WIT{} (i.e. a witness message, which may or may not contain transactions), i.e.~a message which cites the \CONF{}s that they have seen.
-\end{enumerate}
+% A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by valid in-round messages, so we introduce the property
 
-We denote by $V_{i}=\{v\in V \mid i \mod 2^{n_v(i)} = 0\}$ the subset of validators that is scheduled to participate in round $i$. \emph{Assigned weight} of a round $i$, defined in the previous section, is denoted by $\boldsymbol{w}(V_i)$.
+% \begin{equation}
+%   p_i = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu) }(i)}\}
+% \end{equation}
 
-If the leader does not send a \PROP, voters cannot send \CONF{}s--- because a \CONF that does not cite the same round's \PROP is deemed invalid---, but they can still send \WIT{}s, which cite and contribute to the finality of any previous messages.
+% to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
 
-Each validator is assessed according to their own round exponent. All assigned validators become eligible to receive rewards as long as the round gets finalized with messages that were sent within each validator's own round. If everything goes as planned, at the end of a round, the leader's proposal is finalized, but probably nothing else. Other messages get finalized only when they get cited by the next leader's \PROP. \emph{For that reason, we use ``finalized round'' as a synonym for ``finalized \PROP'', and nothing else, throughout this paper.} Here, we intentionally do not make a distinction between blocks and other types of messages, because Highway is agnostic of whether a message contains transactions or not. All three types of messages introduced above could be set to contain transactions, classifying them as blocks. However, the seigniorage incentive mechanism is not concerned with such a distinction. It only focuses on whether the \PROP is finalized, and if so, the weight of the committee that finalized it.
+% \begin{equation}
+%   p'_{i}(\mu) = p'(\mu)\quad\text{and}\quad p_{i}(\mu)
+% \end{equation}
 
-\subsection{Message Validity}
-\label{sec:message-validity}
+% and introduce for a round $i$ the maximal level-1 summit achieved only by in-round messages, $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q)$. We use \emph{participated weight} as a synonym for $q$, that is, the quorum size of the maximal level-1 summit.
 
-The round exponents determine the schedule for proposing and voting on blocks. Validators \emph{are not allowed} to contribute to consensus by sending messages outside their rounds. In the next paragraph, we present validity conditions for messages.
+% With this extended definition, we are ready to define on-time finality: A \PROP sent on $i$ is said to be \emph{finalized on time} only if $q \geq q_{OTF}$ once the rounds of all participants end.
 
-Every message $\mu$ by a validator $v$ always belongs to a unique round: $\mu$ explicitly only contains a tick $t$. So we check what the $v$'s current round exponent $n$ is by looking at the last message in $v$'s previous round. Then we find the greatest $i\leq t$ such that $i$ is divisible by $2^n$. Round $i$ of $v$ is the one this message belongs to. Then $\mu$ is valid only if $S(\mu)\in V_i$, and it satisfies either of the following conditions:
+% We also note that participated weight must be less than or equal to assigned weight, that is, $q \leq \boldsymbol{w}(V_i)$, as a consequence of the round schedule.
 
-\begin{itemize}
-\item
-  $v$ is the round leader of $i$ AND $t = i$ (implying that $\mu$ is a \PROP),
-\item
-  OR $\mu$ is a \CONF or \WIT, and there are no more than 1 messages
-  \emph{from} $v$ before $\mu$ with a tick greater than $i$.
-\end{itemize}
+% \subsubsection*{Eventual Finality}
+% \label{sec:eventual-finality}
 
-A validator $v$ can be said to have \emph{fully participated in round $i$} if and only if $i \leq T(\mu) <i+2^{n_v(i)}$ holds for each of their messages $\mu$ that is required for finality in round $i$. In other words, each validator, depending on whether they are a leader or a voter, has to send the necessary \PROP, \CONF and \WIT messages required for finalization before their respective round ends. Non-participation does not have to imply not receiving any rewards though---see Section~\ref{sec:reward-allocation-eligibility}.
+% EF is concerned with the finality that is achieved in the long run, and is not restricted to in-round messages. This way, the weight on a \PROP can increase up to 100\% of the total weight. Unlike OTF, which fails if a base level of weight is not observed by the end of the round, EF is not binary. It exists on a sliding scale: the higher the weight, the better.
 
-\subsection{In-Roundness}
-\label{sec:in-roundness}
+% The goal is to have all validators voting on a \PROP by the end of the era. Let $\mathcal{S}$ be the maximal level-1 summit on a \PROP, according to all messages sent until the end of the era. If OTF was successful, then we already have $q\geq q_{OTF}$. We define
 
-We define by \emph{in-round messages of round $i$} each \textbf{valid} message $\mu$ by $v\in V_i$ that satisfies $i \leq T(\mu)< i+2^{n_v(i)}$, and we denote it by the property $p_i$. This definition will be used below to introduce a restricted type of summit that is considered only for on-time finalization rewards.
+% \begin{equation}
+% f_{EF} = \frac{q - q_{OTF}}{\boldsymbol{w}(V)-q_{OTF}}
+% \end{equation}
 
-Given a round $i$ of validator $v$, a message is \emph{out-of-round} in the context of $i$ if $T(\mu)\geq i+2^{n_v(i)}$.
-
-Validators do not have to be assigned to a round to vote for the corresponding \PROP. Voting can also happen through out-of-round messages. A message $\mu$ \emph{votes} for for a \PROP $P$ if either of the following conditions are satisfied:
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\item $\mu$ is $P$ itself.
-\item $\mu$ is a \PROP which is a main-descendant of $P$.
-\item $\mu$ is a \CONF or \WIT, voting explicitly for $P$.
-\item $\mu$ is a \CONF or \WIT, voting explicitly for a main-descendant of $P$.
-\end{enumerate}
-
-Here, in-round messages fall under (1) and (3), whereas out-of-round messages can fall under (2), (3) or (4). Only in-round messages are considered for OTF, so only assigned validators can contribute their weight for OTF. However, all valid messages are considered for EF, so all validators can contribute their weight for EF.
-
-Also, validators are allowed to \emph{justify} messages from rounds that they are not included in---they are just not be rewarded for it.
-
-\subsection{Round Feasibility}
-\label{sec:round-feasibility}
-
-The safety theorem dictates that a level-$k$ summit requires a quorum size of at least
-
-\begin{equation}
-q = \frac{\boldsymbol{w}(V)}{2} + \frac{t_f}{2(1-2^{-k})}
-\end{equation}
-
-in order to remain valid for a fault tolerance threshold of $t_f$. We always consider level-1 summits for OTF, so the target quorum size becomes $q=\boldsymbol{w}(V)/2+t_f$. We also target a low $t_f$, e.g.~1\% of total weight, due to the reason explained above. For the given $t_f$, the target quorum size then becomes $q_{OTF} = 0.51 \times \boldsymbol{w}(V)$.
-
-We set $q_{OTF}$ as a protocol parameter and define
-
-\begin{equation}
-I = \{i\in \mathbb{N} \mid \boldsymbol{w}(V_i)\geq q_{OTF}\}
-\end{equation}
-
-to be the set of ticks where the assigned weight is sufficient for OTF. Such ticks are said to be \emph{feasible}, and the ticks that do not satisfy this condition are said to be \emph{infeasible}. Given a feasible tick, the corresponding the rounds that start on it are also said to be feasible. Only feasible rounds are eligible for rewards, and participating in an infeasible round does not earn any reward. In other words, a round's finality can be rewarded only if enough validators have announced to vote on it.
-
-It is ideal to have the validators converge on the same round exponent, because then the participated weight would be maximized for each round. For that reason, reward allocated per round is a function of the total weight assigned to the corresponding tick.
-
-\subsection{Finality Criteria}
-\label{sec:finality-criteria}
-
-\subsubsection*{On-Time Finalization}
-\label{sec:on-time-finalization}
-
-OTF is concerned with the finality that is achieved in the short run, with in-round messages. For the sake of detecting this short-term finality, we restrict ourselves to \emph{summits that are achievable only by in-round messages}.
-
-A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by valid in-round messages, so we introduce the property
-
-\begin{equation}
-  p_i = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu) }(i)}\}
-\end{equation}
-
-to be true for valid messages sent in round $i$. Then we extend $p'$ to obtain
-
-\begin{equation}
-  p'_{i}(\mu) = p'(\mu)\quad\text{and}\quad p_{i}(\mu)
-\end{equation}
-
-and introduce for a round $i$ the maximal level-1 summit achieved only by in-round messages, $\mathcal{S}_i=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q)$. We use \emph{participated weight} as a synonym for $q$, that is, the quorum size of the maximal level-1 summit.
-
-With this extended definition, we are ready to define on-time finality: A \PROP sent on $i$ is said to be \emph{finalized on time} only if $q \geq q_{OTF}$ once the rounds of all participants end.
-
-We also note that participated weight must be less than or equal to assigned weight, that is, $q \leq \boldsymbol{w}(V_i)$, as a consequence of the round schedule.
-
-\subsubsection*{Eventual Finality}
-\label{sec:eventual-finality}
-
-EF is concerned with the finality that is achieved in the long run, and is not restricted to in-round messages. This way, the weight on a \PROP can increase up to 100\% of the total weight. Unlike OTF, which fails if a base level of weight is not observed by the end of the round, EF is not binary. It exists on a sliding scale: the higher the weight, the better.
-
-The goal is to have all validators voting on a \PROP by the end of the era. Let $\mathcal{S}$ be the maximal level-1 summit on a \PROP, according to all messages sent until the end of the era. If OTF was successful, then we already have $q\geq q_{OTF}$. We define
-
-\begin{equation}
-f_{EF} = \frac{q - q_{OTF}}{\boldsymbol{w}(V)-q_{OTF}}
-\end{equation}
-
-to be a scalar between 0 and 1, which represents the amount of weight voting on a \PROP in addition to the minimum required by OTF. This will be multiplied with the rewards allocated for EF to calculate the final eligible amount.
+% to be a scalar between 0 and 1, which represents the amount of weight voting on a \PROP in addition to the minimum required by OTF. This will be multiplied with the rewards allocated for EF to calculate the final eligible amount.
 
 \subsection{Reward Allocation and Eligibility}
 \label{sec:reward-allocation-eligibility}
