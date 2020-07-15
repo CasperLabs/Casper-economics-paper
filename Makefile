@@ -1,4 +1,4 @@
-DOCNAME=highway-economics
+DOCNAME=casperlabs-economics
 
 all: report
 

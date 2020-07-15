@@ -9,9 +9,9 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v2
         with:
-          root_file: highway-economics.tex
+          root_file: casperlabs-economics.tex
       - name: Upload result
         uses: actions/upload-artifact@v2
         with:
           name: pdf
-          path: highway-economics.pdf
+          path: casperlabs-economics.pdf
