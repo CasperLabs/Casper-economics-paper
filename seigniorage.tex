@@ -53,39 +53,30 @@ Validators should \emph{always} finalize rounds on time, by sending the required
 
 We explore whether seigniorage should take eventual finality into account. We know from the theory that as the canonical chain becomes longer, a summit on a block can only increase or remain constant, but can never decrease\footnote{That is, unless the block gets orphaned due to another fork becoming the canonical chain.}. Summits are monotonically increasing, because validators who did not show up during the round can still vote for the block indirectly, through messages in the subsequent rounds. That means, even if there were no direct incentive for eventual finality, validators would still end up increasing it by finalizing the subsequent rounds on time. This renders a direct incentive for eventual finality redundant. Moreover, detecting eventual finality would greatly increase the complexity of production code. For the given reasons, we refrain from setting direct incentives for eventual finality.
 
-% Finally, we introduce the following function which maps a tick to the corresponding round reward:
-
-
-
-% \begin{equation}
-%   % r(i) = \pow(2, {\min(n_{\mathcal{L}(i)}(i) - n^\ast, 0)}) \times (Q(i + 2^{n^\ast}) - Q(i))
-%   r(i) = r^\ast\pow(2, {\min(n_{\mathcal{L}(i)}(i) - n^\ast, 0)})
-% \end{equation}
-
 Once a \PROP is sent and enough time has passed, the history of messages can be examined to detect whether the round was indeed finalized on time, according to the conditions given above.
 
 If the round is not finalized on time, validators do not receive any rewards. If the round \emph{is} finalized on time, \emph{only the assigned validators} share the OTF reward pro rata, regardless of whether they have sent messages or not. Each $v\in V_i$ receives
-
+%
 \begin{equation}
   r_i(v) = f_i(v) \, r^\ast_n \,
   \frac{\boldsymbol{w}(v)}{\boldsymbol{w}(V_i)}
   \frac{q_{i,v}}{\boldsymbol{w}(V)}
   .
 \end{equation}
-
+%
 The total reward paid out for a round is obtained simply by summing up the reward for each validator:
-
+%
 \begin{equation}
   R_i = \sum_{v\in V_i} r_i(v)
   .
 \end{equation}
-
+%
 The maximum reward that can be paid out for a round is obtained by assuming that maximal summit was reached and OTF was successful in the perspective of all assigned validators:
-
+%
 \begin{equation}
   \max R_i = r^\ast_n \,
   \frac{\boldsymbol{w}(V_i)}{\boldsymbol{w}(V)}
 \end{equation}
-
+%
 where we made use of the fact that $\max q_{i,v} = \boldsymbol{w}(V_i)$. Thus, we prove that the round reward is bounded by $r^\ast_n$, and the CLX supply cannot grow faster than the ideal case introduced above.
 

@@ -114,19 +114,15 @@ Therefore, a \PROP can be finalized at a later round, even though it is not fina
 
 \subsection{Incentives at a Higher Level}
 
-Given all the moving bits of Highway and blockchains in general, it is essential to paint in broad strokes the type of behavior we want to incentivize on the CasperLabs blockchain. We believe that having this the bigger picture in mind will make reasoning easier in the following steps of our design.
+Given all the moving bits of Highway and blockchains in general, it is essential to paint in broad strokes the type of behavior we want to incentivize on the CasperLabs blockchain. We believe that having this the bigger picture in mind will make reasoning easier in the subsequent steps of our design.
 
-On the CasperLabs blockchain, we want to incentivize validators to:
+On the CasperLabs blockchain, we incentivize validators to:
 
 \begin{itemize}
-\item Converge on the same round exponent:
-\item Operate with the minimum round exponent:
-\item Finalize a round with as much weight as possible before it ends:
-\item Fill in blocks with as much transactions as possible:
+\item \textbf{Converge on the same round exponent:} Validators should work in unison, so that assigned weight is maximized for each round.
+\item \textbf{Finalize a round with as much weight as possible before it ends:} Every validator should participate in the rounds that they are assigned to, by proposing and voting on blocks. Blocks should be backed by as much weight as possible, for maximum security.
+\item \textbf{Operate at the minimum round exponent:} Platform parameters such as block gas limit will be chosen so that validators can propose and finalize blocks at the optimal rate. The incentives will then be set so that it is in validators' best interest to participate in as many rounds as possible, which is achieved by operating at the minimum round exponent.
+\item \textbf{Fill in blocks with as many transactions as possible:} Validators should not keep transactions waiting in the transaction pool, and follow strategies that are not in the users' best interest.
 \end{itemize}
 
-
-
 % On a side note, validators are also allowed to cite messages from rounds that they are not included in.
-
-% TODO: Add why we would not include rewards for eventual finality
