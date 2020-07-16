@@ -1,0 +1,20 @@
+\appendix
+
+\section{Appendix}
+
+\subsection{Message Validity}
+\label{sec:message-validity}
+
+The round exponents determine the schedule for proposing and voting on blocks. Validators \emph{are not allowed} to contribute to consensus by sending messages outside their rounds. We present validity conditions for messages below.
+
+Every message $\mu$ by a validator $v$ always belongs to a unique round: $\mu$ explicitly only contains a tick $t$. So we check what the $v$'s current round exponent $n$ is by looking at the last message in $v$'s previous round. Then we find the greatest $i\leq t$ such that $i$ is divisible by $2^n$. Round $i$ of $v$ is the one this message belongs to. Then $\mu$ is valid only if $S(\mu)\in V_i$, and it satisfies either of the following conditions:
+
+\begin{itemize}
+\item
+  $v$ is the round leader of $i$ AND $t = i$ (implying that $\mu$ is a \PROP),
+\item
+  OR $\mu$ is a \CONF or \WIT, and there are no more than 1 messages
+  \emph{from} $v$ before $\mu$ with a tick greater than $i$.
+\end{itemize}
+
+A validator $v$ can be said to have \emph{fully participated in round $i$} if and only if $i \leq T(\mu) <i+2^{n_v(i)}$ holds for each of their messages $\mu$ that is required for finality in round $i$. In other words, each validator, depending on whether they are a leader or a voter, has to send the necessary \PROP, \CONF and \WIT messages required for finalization before their respective round ends. Non-participation does not have to imply not receiving any rewards though---see Section~\ref{sec:seigniorage}.

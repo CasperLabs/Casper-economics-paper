@@ -10,6 +10,7 @@
 \usepackage{authblk}
 \usepackage{biblatex}
 \usepackage{xspace}
+\usepackage[toc]{appendix}
 
 \addbibresource{casperlabs-economics.bib}
 
@@ -57,9 +58,11 @@
 \tableofcontents
 \pagebreak
 
-\section*{Introduction}
-
+\input{./preliminaries.tex}
 \input{./seigniorage.tex}
+
+\newpage
+\input{./appendix.tex}
 
 \newpage
 
