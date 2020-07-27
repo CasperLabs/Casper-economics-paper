@@ -41,27 +41,31 @@ Finality in the CasperLabs blockchain is the degree of certainty with which a bl
 
 Validators should finalize rounds on time, by sending required messages before their respective rounds end. We set OTF to require only a small but sufficient participating weight, for a simple reason: the probability of receiving a message on time decreases as the duration required for that approaches network propagation delay, so there is a trade-off between round lengths and assigned weight. We favor faster rounds over higher short-term safety guarantees, and argue that the latter can be achieved once the rounds end.
 
+\begin{definition}[In-roundness]
+  A message $\mu$ is \emph{in-round} if it satisfies
+  $i \leq T(\mu)< i+2^{n_{S(\mu)}(i)}$.
+\end{definition}
 
-We define by \emph{$v$'s in-round messages} each message $\mu$ that satisfies $i \leq T(\mu)< i+2^{n_v(i)}$, and we denote it by the property $p_{i,v}$. Note that this also includes messages from other validators. This definition will be used below to introduce a restricted type of summit that is considered only for on-time finality rewards.
+In other words, a message is in-round if its timestamp is smaller than the beginning of its sender's next round. This definition will be used below to introduce a restricted type of summit that is considered only for on-time finality rewards.
 
 % Given a round $i$ of validator $v$, a message is \emph{out-of-round} in the context of $i$ if $T(\mu)\geq i+2^{n_v(i)}$.
 
 
 OTF is concerned with the finality that is achieved in the short run, with in-round messages. For the sake of detecting this short-term finality, we restrict ourselves to \emph{summits that are achievable only by in-round messages}.
 
-A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by $v$'s in-round messages, so we introduce the property
+A summit is defined as $\mathcal{S}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p',q)$ where the respective properties $p$ and $p'$ are determined by the fork choice rule. We are interested in summits achievable only by all validators' in-round messages, so we introduce the property
 
 \begin{equation}
-  p_{i,v} = \{\mu \mid i \leq T(\mu)< i+2^{n_v(i)}\}
+  p_{i} = \{\mu \mid i \leq T(\mu)< i+2^{n_{S(\mu)}(i)}\}
 \end{equation}
 
-to be true for messages sent in round $i$. Then we extend $p'$ to obtain
+to be true for messages sent in rounds starting at $i$. Then we extend $p'$ to obtain
 
 \begin{equation}
-  p'_{i,v}(\mu) = p'(\mu)\quad\text{and}\quad p_{i,v}(\mu)
+  p'_{i}(\mu) = p'(\mu)\quad\text{and}\quad p_{i}(\mu)
 \end{equation}
 
-and introduce for $v$'s round $i$ the maximal level-1 summit achieved only by $v$'s in-round messages, $\mathcal{S}_{i,v}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i,v},q_{i,v})$. We use \emph{participated weight} as a synonym for $q_{i,v}$, the quorum size of the maximal level-1 summit. Participated weight cannot be greater than assigned weight, that is, $q_{i,v} \leq \boldsymbol{w}(V_i)$, as a consequence of the round schedule.
+and introduce for $v$'s round $i$ the maximal level-1 summit achieved only by in-round messages, $\mathcal{S}_{i}=((C_j)_{j\in\mathbb{N}}, \sigma,p,p'_{i},q_{i})$. We use \emph{participated weight} as a synonym for $q_{i}$, the quorum size of the maximal level-1 summit. Participated weight cannot be greater than assigned weight, that is, $q_{i} \leq \boldsymbol{w}(V_i)$, as a consequence of the round schedule.
 
 In order to call a round finalized on-time, we require a certain quorum size, $q_{OTF}$, which is a protocol parameter. To find out its value, we make use of the safety theorem:
 
@@ -82,20 +86,20 @@ A tick $i$ is said to be \emph{feasible} if $\boldsymbol{w}(V_i)\geq q_{OTF}$; o
 Finally, we can define on-time finality:
 
 \begin{definition}[On-time finality]
-  A \PROP sent on $i$ is said to be \emph{finalized on time in $v$'s perspective} only if $q_{i,v} \geq q_{OTF}$ once $v$'s round ends.
+  A \PROP sent on $i$ is said to be \emph{finalized on time} only if $q_{i} \geq q_{OTF}$ once $v$'s round ends.
 \end{definition}
 
 We introduce the function
 
 \begin{equation}
-  f_i(v) =
+  f(i) =
   \begin{cases}
-    1 & \text{if } q_{i,v} \geq q_{OTF} \\
+    1 & \text{if } q_{i} \geq q_{OTF} \\
     0 & \text{otherwise}
   \end{cases}
 \end{equation}
 
-to be used later on in seigniorage.
+to output whether round $i$ was finalized on time. We use to determine the eligibility for round rewards.
 
 \subsubsection*{Eventual Finality}
 \label{sec:eventual-finality}
