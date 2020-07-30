@@ -78,28 +78,16 @@ In order to call a round finalized on-time, we require a certain quorum size, $q
 
   in order to remain valid for a fault tolerance threshold of $t_f$.
 \end{theorem}
-
+%
 We always consider level-1 summits for OTF, so the target quorum size becomes $q_{OTF}=\boldsymbol{w}(V)/2+t_f$. We also target a low $t_f$, e.g.~1\% of total weight. For the given fault tolerance threshold, we obtain $q_{OTF} = 0.51 \times \boldsymbol{w}(V)$.
-
-A tick $i$ is said to be \emph{feasible} if $\boldsymbol{w}(V_i)\geq q_{OTF}$; otherwise, it is said to be \emph{infeasible}. Rounds that start on feasible ticks are also said to be feasible. That is because the rounds that do not satisfy this condition cannot be finalized on time. Only feasible rounds are eligible for rewards, and participating in an infeasible round does not earn any reward.
-
-Finally, we can define on-time finality:
-
+%
+\\A tick $i$ is said to be \emph{feasible} if $\boldsymbol{w}(V_i)\geq q_{OTF}$; otherwise, it is said to be \emph{infeasible}. Rounds that start on feasible ticks are also said to be feasible. That is because the rounds that do not satisfy this condition cannot be finalized on time. Only feasible rounds are eligible for rewards, and participating in an infeasible round does not earn any reward.
+%
+\\Finally, we can define on-time finality:
+%
 \begin{definition}[On-time finality]
   A \PROP sent on $i$ is said to be \emph{finalized on time} only if $q_{i} \geq q_{OTF}$ once $v$'s round ends.
 \end{definition}
-
-We introduce the function
-
-\begin{equation}
-  f(i) =
-  \begin{cases}
-    1 & \text{if } q_{i} \geq q_{OTF} \\
-    0 & \text{otherwise}
-  \end{cases}
-\end{equation}
-
-to output whether round $i$ was finalized on time. We use to determine the eligibility for round rewards.
 
 \subsubsection*{Eventual Finality}
 \label{sec:eventual-finality}

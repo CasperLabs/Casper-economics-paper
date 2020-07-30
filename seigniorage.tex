@@ -55,7 +55,20 @@ We explore whether seigniorage should take eventual finality into account. We kn
 
 Once a \PROP is sent and enough time has passed, the history of messages can be examined to detect whether the round was indeed finalized on time, according to the conditions given above.
 
-If the round is not finalized on time, validators do not receive any rewards. If the round \emph{is} finalized on time, \emph{only the assigned validators} share the OTF reward pro rata, regardless of whether they have sent messages or not. Total round reward is calculated as
+If the round is not finalized on time, validators do not receive any rewards. If the round \emph{is} finalized on time, \emph{the assigned validators} share the OTF reward pro rata.
+%
+%
+We introduce the function
+%
+\begin{equation}
+  f(i) =
+  \begin{cases}
+    1 & \text{if } q_{i} \geq q_{OTF} \\
+    c_\text{forgiveness} & \text{otherwise}
+  \end{cases}
+\end{equation}
+%
+where $c_\text{forgiveness} \in [0,1)$ is a protocol parameter\footnote{We set it to a nonzero value if we want to give minuscule rewards for rounds that were not finalized on-time, e.g. 20\%. Otherwise, we set it to zero.}. Then, total round reward is calculated as
 %
 \begin{equation}
   R_i = f(i) \, r^\ast_n \,
@@ -63,14 +76,22 @@ If the round is not finalized on time, validators do not receive any rewards. If
   .
 \end{equation}
 %
-Then, each $v\in V_i$ receives
+Each $v\in V_i$ receives
 %
 \begin{equation}
   r_i(v) = R_i \frac{\boldsymbol{w}(v)}{\boldsymbol{w}(V_i)}
-  .
 \end{equation}
 %
-The maximum reward that can be paid out for a round is obtained by assuming that maximal summit was reached and OTF was successful:
+if and only if
+%
+\begin{itemize}
+\item $v$ is the leader, and has sent valid and in-round \PROP and \WIT messages, or
+\item $v$ is a voter, and has sent valid and in-round \PROP and \CONF messages.
+\end{itemize}
+%
+Otherwise, they do not receive any reward.
+%
+\\The maximum reward that can be paid out for a round is obtained by assuming that maximal summit was reached and OTF was successful:
 %
 \begin{equation}
   \max R_i = r^\ast_n \,
